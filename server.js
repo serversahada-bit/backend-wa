@@ -432,7 +432,7 @@ app.post('/api/logout', async (req, res) => {
     }
 });
 
-const PORT = 3001;
-server.listen(PORT, () => {
-    console.log(`Node Server berjalan - XAMPP Edition API di Port ${PORT}`);
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Node Server berjalan di Port ${PORT} (0.0.0.0 Terbuka)`);
 });
