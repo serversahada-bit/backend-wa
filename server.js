@@ -9,13 +9,13 @@ const axios = require('axios');
 const db = require('./db');
 
 const app = express();
-app.use(cors({ origin: '*' })); 
+app.use(cors({ origin: 'http://z5t8audkxumnzuroyd5n2jvy.72.61.141.107.sslip.io' })); 
 app.use(express.json({ limit: '50mb' }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: '*',
+        origin: 'http://z5t8audkxumnzuroyd5n2jvy.72.61.141.107.sslip.io',
         methods: ['GET', 'POST']
     }
 });
