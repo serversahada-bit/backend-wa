@@ -1,11 +1,13 @@
 const mysql = require('mysql2/promise');
+require('dotenv').config();
 
-// Konfigurasi Root XAMPP
+// Konfigurasi Database Langsung ke Coolify
 const dbConfig = {
-    host: 'localhost',
-    user: 'root',
-    password: '', // Default XAMPP tanpa password
-    database: 'wa_blast_db'
+    host: process.env.DB_HOST || 'mysql-database-bfbtt6xrisrretzxlvse13uj',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'q33a9T22OAcXKVfKU9I0cZh6MZ3PTTF2m80sVgOrvz7FhsTsf3u0cPmnVUZEP6it', // <--- PASTE PASSWORD DARI COOLIFY DI SINI
+    database: process.env.DB_NAME || 'default',
+    port: process.env.DB_PORT || 3306
 };
 
 let pool;
@@ -15,7 +17,8 @@ async function initDB() {
         const connection = await mysql.createConnection({
             host: dbConfig.host,
             user: dbConfig.user,
-            password: dbConfig.password
+            password: dbConfig.password,
+            port: dbConfig.port
         });
         
         await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\`;`);
@@ -30,7 +33,7 @@ async function initDB() {
             queueLimit: 0
         });
 
-        console.log('✅ XAMPP MySQL Terkoneksi & Database wa_blast_db Siap.');
+        console.log(`✅ Database [${dbConfig.database}] Terkoneksi di Host: ${dbConfig.host}`);
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS wa_sessions (
@@ -53,12 +56,11 @@ async function initDB() {
             );
         `);
         
-        // Auto-Migrate Kolom untuk fitur Balas Pesan (1 on 1 Chat / CS Dashboard)
         try {
             await pool.query('ALTER TABLE wa_inbox ADD COLUMN is_outgoing BOOLEAN DEFAULT FALSE;');
             console.log('✅ Berhasil Menambahkan Kolom Chat Keluar (is_outgoing).');
         } catch (e) {
-            // Abaikan jika kolom sudah ada.
+            // Abaikan jika kolom sudah ada
         }
 
         await pool.query(`
@@ -73,7 +75,6 @@ async function initDB() {
             );
         `);
 
-        // Fitur Bot Chatbot Auto Tracker
         await pool.query(`
             CREATE TABLE IF NOT EXISTS wa_autoreplies (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -84,7 +85,6 @@ async function initDB() {
             );
         `);
 
-        // Fitur Kontak / Buku Telepon per Sesi
         await pool.query(`
             CREATE TABLE IF NOT EXISTS wa_contacts (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -100,8 +100,8 @@ async function initDB() {
         console.log('✅ Tabel MySQL wa_sessions, wa_inbox, wa_blast_logs, wa_autoreplies, wa_contacts berhasil divalidasi.');
 
     } catch (err) {
-        console.error('❌ DATABASE ERROR: Pastikan Apache & MySQL di aplikasi XAMPP Anda sudah berstatus "Running" atau "Start".');
-        console.error(err.message);
+        console.error('❌ DATABASE ERROR: Gagal terhubung ke database Coolify.');
+        console.error('Pesan Error:', err.message);
     }
 }
 
@@ -158,8 +158,6 @@ module.exports = {
     getRecentInboxDesc: async () => {
         if(!pool) return [];
         try {
-           // Mengambil List inbox teratas yang bukan outgoing (agar list di sebelah kiri mewakili pesan kliennya saja, atau ambil semua juga tidak masalah)
-           // Kita ambil semua saja supaya tahu kita sudah membalas atau belum kalau kita mapping di React.
            const [rows] = await pool.query('SELECT * FROM wa_inbox ORDER BY created_at DESC LIMIT 150');
            return rows.map(r => ({
               sessionId: r.session_id,
@@ -240,7 +238,6 @@ module.exports = {
     saveContact: async (sessionId, name, number) => {
         if(!pool) return false;
         try {
-            // Kita gunakan upsert (ON DUPLICATE KEY UPDATE) supaya tidak duplikat jika nomor sama untuk sesi yang sama
             await pool.query(
                 `INSERT INTO wa_contacts (session_id, contact_name, contact_number) 
                  VALUES (?, ?, ?) 
