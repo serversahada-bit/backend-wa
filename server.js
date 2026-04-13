@@ -9,13 +9,13 @@ const axios = require('axios');
 const db = require('./db');
 
 const app = express();
-app.use(cors({ origin: 'http://z5t8audkxumnzuroyd5n2jvy.72.61.141.107.sslip.io' })); 
+app.use(cors({ origin: 'https://greatcs.ptslu.id' }));
 app.use(express.json({ limit: '50mb' }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: 'http://z5t8audkxumnzuroyd5n2jvy.72.61.141.107.sslip.io',
+        origin: 'https://greatcs.ptslu.id',
         methods: ['GET', 'POST']
     }
 });
@@ -30,7 +30,7 @@ const initializeSession = (sessionId) => {
     const safeClientId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
 
     const client = new Client({
-        authStrategy: new LocalAuth({ clientId: safeClientId }), 
+        authStrategy: new LocalAuth({ clientId: safeClientId }),
         puppeteer: {
             headless: true,
             args: [
@@ -45,14 +45,14 @@ const initializeSession = (sessionId) => {
         }
     });
 
-    const sessionData = { 
-        id: sessionId, 
-        client: client, 
-        status: 'Initializing', 
-        qr: null 
+    const sessionData = {
+        id: sessionId,
+        client: client,
+        status: 'Initializing',
+        qr: null
     };
     sessions.set(sessionId, sessionData);
-    
+
     // Sinkronisasi status ke DB
     db.saveSession(sessionId, 'Initializing');
 
@@ -92,7 +92,7 @@ const initializeSession = (sessionId) => {
         sessionData.status = 'Disconnected';
         db.saveSession(sessionId, 'Disconnected');
         io.emit('wa_status', { sessionId, status: 'Disconnected' });
-        
+
         client.destroy();
         sessions.delete(sessionId);
         setTimeout(() => initializeSession(sessionId), 5000);
@@ -125,7 +125,7 @@ const initializeSession = (sessionId) => {
         try {
             const rules = await db.getAutoReplies();
             const incomingText = msg.body.trim().toLowerCase();
-            
+
             for (const rule of rules) {
                 const keywordText = rule.keyword.trim().toLowerCase();
                 let isMatch = false;
@@ -138,7 +138,7 @@ const initializeSession = (sessionId) => {
 
                 if (isMatch) {
                     await client.sendMessage(msg.from, rule.response_message);
-                    
+
                     const replyPayload = {
                         sessionId: sessionId,
                         body: rule.response_message,
@@ -195,7 +195,7 @@ app.post('/api/sessions/create', async (req, res) => {
     if (!sessionId || sessions.has(sessionId)) {
         return res.status(400).json({ error: 'Nama Session Kosong Atau Sudah Dipakai.' });
     }
-    
+
     // Save to DB
     await db.saveSession(sessionId, 'Initializing');
 
@@ -206,12 +206,12 @@ app.post('/api/sessions/create', async (req, res) => {
 
 app.post('/api/sessions/delete', async (req, res) => {
     const { sessionId } = req.body;
-    if (!sessionId || !sessions.has(sessionId)) return res.status(400).json({error: 'Invalid ID'});
+    if (!sessionId || !sessions.has(sessionId)) return res.status(400).json({ error: 'Invalid ID' });
 
     const sessionData = sessions.get(sessionId);
-    if (sessionData.client) await sessionData.client.destroy().catch(()=>{});
+    if (sessionData.client) await sessionData.client.destroy().catch(() => { });
     sessions.delete(sessionId);
-    
+
     await db.deleteSession(sessionId);
 
     io.emit('session_deleted', { sessionId });
@@ -233,7 +233,7 @@ app.post('/api/blast', async (req, res) => {
     if (!Array.isArray(numbers) || numbers.length === 0) {
         return res.status(400).json({ error: 'Array numbers kosong.' });
     }
-    
+
     let msgMedia = null;
     if (media && media.data && media.mimetype) {
         msgMedia = new MessageMedia(media.mimetype, media.data, media.filename || 'attachment');
@@ -263,9 +263,9 @@ app.post('/api/blast', async (req, res) => {
         // SIMPAN LOG TIAP NOMOR KE MYSQL DB XAMPP
         db.saveBlastLog(sessionId, number, statusKirim, message);
 
-        io.emit('blast_progress', { 
-            sessionId, index: i + 1, total: numbers.length, 
-            status: statusKirim, number: number 
+        io.emit('blast_progress', {
+            sessionId, index: i + 1, total: numbers.length,
+            status: statusKirim, number: number
         });
 
         if (i < numbers.length - 1) {
@@ -288,15 +288,15 @@ app.post('/api/chat/history', async (req, res) => {
 app.post('/api/chat/send', async (req, res) => {
     const { sessionId, targetNumber, message } = req.body;
     if (!sessionId || !targetNumber || !message) return res.status(400).json({ error: 'Data tidak lengkap' });
-    
+
     const sessionData = sessions.get(sessionId);
     if (!sessionData || (sessionData.status !== 'Ready' && sessionData.status !== 'Authenticated')) {
         return res.status(400).json({ error: 'Sesi WhatsApp tidak valid/siap.' });
     }
-    
+
     // Biasanya format msg.from itu '628xxx@c.us'
     const chatId = targetNumber.includes('@') ? targetNumber : `${targetNumber.replace(/[-\s+]/g, '')}@c.us`;
-    
+
     try {
         await sessionData.client.sendMessage(chatId, message);
         const payload = {
@@ -312,7 +312,7 @@ app.post('/api/chat/send', async (req, res) => {
         // io.emit('wa_message', payload); 
         // Mengubah strategy, kita kirim real-time lewat event chat_reply spesifik
         io.emit('chat_reply', payload);
-        
+
         res.json({ success: true, payload });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -327,25 +327,25 @@ app.post('/api/import-sheets', async (req, res) => {
     // Coba temukan ID Spreadsheet (Format: /d/XXXXXX/)
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (!match) return res.status(400).json({ error: "Gagal menemukan ID Dokumen. Pastikan Copy utuh Link Google Sheets." });
-    
+
     const sheetId = match[1];
     const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
 
     try {
         const response = await axios.get(exportUrl, { responseType: 'text' });
         const csvData = response.data;
-        
+
         const allNumbers = [];
         // Pembersihan CSV: pisahkan baris dan koma, bersihkan karakter aneh
         const cells = csvData.split(/[\n,;\t]+/);
-        
+
         for (const cell of cells) {
             const cleanStr = String(cell).replace(/[-\s+"']/g, ''); // bersihkan spasi, strip, tanda kutip
             if (cleanStr.match(/^(62|08)[0-9]{8,15}$/)) {
                 allNumbers.push(cleanStr);
             }
         }
-        
+
         const unique = [...new Set(allNumbers)];
         res.json({ success: true, count: unique.length, numbers: unique });
     } catch (e) {
@@ -362,17 +362,17 @@ app.get('/api/autoreply/list', async (req, res) => {
 
 app.post('/api/autoreply/add', async (req, res) => {
     const { keyword, response, isExact } = req.body;
-    if(!keyword || !response) return res.status(400).json({error: 'Harap isi semua kolom'});
+    if (!keyword || !response) return res.status(400).json({ error: 'Harap isi semua kolom' });
     const validExact = isExact !== undefined ? isExact : true;
     const ok = await db.saveAutoReply(keyword, response, validExact);
-    if(ok) res.json({success: true});
-    else res.status(500).json({error: 'Gagal meresim query Chatbot ke database.'});
+    if (ok) res.json({ success: true });
+    else res.status(500).json({ error: 'Gagal meresim query Chatbot ke database.' });
 });
 
 app.post('/api/autoreply/delete', async (req, res) => {
     const { id } = req.body;
     await db.deleteAutoReply(id);
-    res.json({success: true});
+    res.json({ success: true });
 });
 
 // --- API MANAJEMEN KONTAK / BUKU TELEPON ---
@@ -383,7 +383,7 @@ app.get('/api/contacts/:sessionId', async (req, res) => {
 });
 
 app.post('/api/contacts/save', async (req, res) => {
-    const { sessionId, contacts } = req.body; 
+    const { sessionId, contacts } = req.body;
     // contacts bisa berupa array objek [{name: "A", number: "123"}] untuk bulk insert, 
     // atau sekadar 1 objek jika manual insert.
     if (!sessionId || !contacts) return res.status(400).json({ error: 'Data tidak lengkap' });
@@ -411,7 +411,7 @@ app.post('/api/contacts/delete', async (req, res) => {
 
 app.post('/api/logout', async (req, res) => {
     const { sessionId } = req.body;
-    if (!sessionId || !sessions.has(sessionId)) return res.status(400).json({error: 'Invalid ID'});
+    if (!sessionId || !sessions.has(sessionId)) return res.status(400).json({ error: 'Invalid ID' });
 
     const sessionData = sessions.get(sessionId);
     try {
