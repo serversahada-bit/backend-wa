@@ -4,8 +4,8 @@ require('dotenv').config();
 // Konfigurasi Database Langsung ke Coolify
 const dbConfig = {
     host: process.env.DB_HOST || 'bfbtt6xrisrretzxlvse13uj',
-    user: process.env.DB_USER || 'mysql',
-    password: process.env.DB_PASSWORD || 'kkrKyU8duP3oRaUtdUlKVHVG5kNuMnOD26vYcl7HGvuJdINefSU6CmpT55drz3YN',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'q33a9T22OAcXKVfKU9I0cZh6MZ3PTTF2m80sVgOrvz7FhsTsf3u0cPmnVUZEP6it',
     database: process.env.DB_NAME || 'default',
     port: process.env.DB_PORT || 3306
 };
