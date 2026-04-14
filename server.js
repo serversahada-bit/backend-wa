@@ -9,13 +9,13 @@ const axios = require('axios');
 const db = require('./db');
 
 const app = express();
-app.use(cors({ origin: 'https://greatcs.ptslu.id' }));
+app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: 'https://greatcs.ptslu.id',
+        origin: '*',
         methods: ['GET', 'POST']
     }
 });
